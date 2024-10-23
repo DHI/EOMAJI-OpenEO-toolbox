@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "eomaji"
+version = "0.1.0"
+description = ""
+authors = ["Marie Lund Larsen <mlla@dhigroup.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+openeo = "^0.32.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

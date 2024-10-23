@@ -1,0 +1,4 @@
+**poetry.lock
+**.pyc
+**.env
+notebooks/local**
