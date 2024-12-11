@@ -36,7 +36,7 @@ setup(
         "scipy>=1.14.1",
         "openeo>=0.33.0",
         "numba==0.57.1",
-        # "pydms @ git+https://github.com/radosuav/pyDMS.git",
+        "pydms @ git+https://github.com/mariegitter/pyDMS.git",
     ],
     extras_require={"dev": ["ipykernel>=6.29.5"]},
 )
