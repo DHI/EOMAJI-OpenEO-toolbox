@@ -30,14 +30,13 @@ setup(
     license="Apache-2.0",
     packages=["eomaji"],
     install_requires=[
-        f"gdal=={gdal_version}",
         "numpy>=1.24.4",
         "scikit-learn>=1.5.2",
         "pyproj>=3.7.0",
         "scipy>=1.14.1",
         "openeo>=0.33.0",
         "numba==0.57.1",
-        "pydms @ git+https://github.com/radosuav/pyDMS.git",
+        # "pydms @ git+https://github.com/radosuav/pyDMS.git",
     ],
     extras_require={"dev": ["ipykernel>=6.29.5"]},
 )
