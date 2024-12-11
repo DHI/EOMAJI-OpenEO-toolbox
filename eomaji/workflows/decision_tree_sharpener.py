@@ -4,7 +4,7 @@ import tempfile
 import openeo
 import xarray as xr
 from pyDMS.pyDMS import DecisionTreeSharpener
-from workflows.utils import gdal_to_xarray
+from eomaji.utils import gdal_to_xarray
 
 
 # Setting up logger

@@ -2,7 +2,7 @@
 **.pyc
 **.env
 notebooks/local**
-workflows/*/local**
+**/local**
 data/**
 **.egg-info
 dist/
