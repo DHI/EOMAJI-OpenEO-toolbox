@@ -1,7 +1,7 @@
 [project]
 name = "eomaji"
-version="0.1.0"
-description = ""
+version = "0.1.0"
+description = "A Python package for EOMaji"
 authors = ["Marie Lund Larsen <mlla@dhigroup.com>"]
 license = {text = "Apache-2.0"}
 readme = "README.md"
@@ -10,33 +10,31 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
 ]
-dependencies = []
 
-[tool.poetry]
+dependencies = [
+    "numpy>=1.24.4",
+    "scikit-learn>=1.5.2",
+    "pyproj>=3.7.0",
+    "scipy>=1.14.1",
+    "openeo>=0.33.0",
+    "numba==0.57.1",
+    "pydms @ git+https://github.com/radosuav/pyDMS.git"
+]
+
+[tool.uv]
 name = "eomaji"
 version = "0.1.0"
-description = ""
+description = "A Python package for EOMaji"
 authors = ["Marie Lund Larsen <mlla@dhigroup.com>"]
 readme = "README.md"
 packages = [
-    { include = "./openeo_workflows" }
+    { include = "./workflows" }
 ]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-numpy = "^1.24.4"
-scikit-learn = "^1.5.2"
-pyproj = "^3.7.0"
-scipy = "^1.14.1"
-openeo = "^0.33.0"
-numba = "0.57.1"
-gdal = "3.8.4"
-pydms = {git = "https://github.com/radosuav/pyDMS.git"}
-
-
-[tool.poetry.group.dev.dependencies]
+[tool.uv.group.dev.dependencies]
 ipykernel = "^6.29.5"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+

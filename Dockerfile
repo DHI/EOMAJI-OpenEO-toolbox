@@ -24,8 +24,5 @@ WORKDIR /app
 
 COPY . .
 
-#RUN pip install poetry
-#RUN pip install git+https://github.com/radosuav/pyDMS.git
-#COPY pyproject.toml /app/
-#RUN poetry config virtualenvs.create false
-#RUN poetry install --no-dev
+RUN pip install uv setuptools wheel
+RUN pip install .

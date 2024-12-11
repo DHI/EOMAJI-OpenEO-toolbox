@@ -2,4 +2,10 @@
 **.pyc
 **.env
 notebooks/local**
+workflows/*/local**
 data/**
+**.egg-info
+dist/
+build/
+data/
+**__pycache__**
