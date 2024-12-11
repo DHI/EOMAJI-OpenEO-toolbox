@@ -28,7 +28,7 @@ setup(
     author="Marie Lund Larsen",
     author_email="mlla@dhigroup.com",
     license="Apache-2.0",
-    packages=["workflows"],
+    packages=["eomaji"],
     install_requires=[
         f"gdal=={gdal_version}",
         "numpy>=1.24.4",

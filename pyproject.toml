@@ -30,7 +30,7 @@ description = "A Python package for EOMaji"
 authors = ["Marie Lund Larsen <mlla@dhigroup.com>"]
 readme = "README.md"
 packages = [
-    { include = "./eomaji/workflows" }
+    { include = "./eomaji" }
 ]
 
 [tool.uv.group.dev.dependencies]
