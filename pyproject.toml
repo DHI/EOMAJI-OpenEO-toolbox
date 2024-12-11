@@ -2,7 +2,9 @@
 name = "eomaji"
 version = "0.1.0"
 description = "A Python package for EOMaji"
-authors = ["Marie Lund Larsen <mlla@dhigroup.com>"]
+authors = [
+    { name = "Marie Lund Larsen", email = "mlla@dhigroup.com" }
+]
 license = {text = "Apache-2.0"}
 readme = "README.md"
 classifiers = [
