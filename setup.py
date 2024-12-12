@@ -1,6 +1,6 @@
 import subprocess
 import sys
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 def get_gdal_version():
@@ -28,7 +28,7 @@ setup(
     author="Marie Lund Larsen",
     author_email="mlla@dhigroup.com",
     license="Apache-2.0",
-    packages=["eomaji"],
+    packages=find_packages(),  # Automatically include all sub-packages
     install_requires=[
         "numpy>=1.24.4",
         "scikit-learn>=1.5.2",
