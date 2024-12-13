@@ -14,6 +14,15 @@ logger = logging.getLogger(__name__)
 def run_decision_tree_sharpener(
     high_resolution_cube: openeo.DataCube,
     low_resolution_cube: openeo.DataCube,
+    low_resolution_mask: openeo.DataCube = None,
+    mask_values: int = [],
+    cv_homogeneity_threshold: int = 0,
+    moving_window_size: int = 30,
+    disaggregating_temperature: bool = True,
+    n_jobs: int = 3,
+    n_estimators: int = 30,
+    max_samples: float = 0.8,
+    max_features: float = 0.8,
 ) -> xr.DataArray:
     """
     Perform disaggregation of low-resolution imagery to high-resolution imagery using the
@@ -39,19 +48,32 @@ def run_decision_tree_sharpener(
             low_resolution_cube.download(low_res_file)
             logger.info(f"Downloaded low-resolution file to {low_res_file}")
 
+        # Download the low-resolution mask file to a temporary location
+        if low_resolution_mask:
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".tiff"
+            ) as low_res_mask_temp:
+                low_res_mask_file = low_res_mask_temp.name
+                low_resolution_mask.download(low_res_mask_file)
+                logger.info(f"Downloaded low-resolution file to {low_res_mask_file}")
+                low_res_mask_files = [low_res_mask_file]
+        else:
+            low_res_mask_files = []
+
         # Common options for the decision tree model
         common_opts = {
             "highResFiles": [high_res_file],  # Local path to high-res image
             "lowResFiles": [low_res_file],  # Local path to low-res image
-            "lowResGoodQualityFlags": [1],
-            "cvHomogeneityThreshold": 0,
-            "movingWindowSize": 30,  # Adjust based on spatial scale
-            "disaggregatingTemperature": True,
+            "lowResQualityFiles": low_res_mask_files,
+            "lowResGoodQualityFlags": mask_values,
+            "cvHomogeneityThreshold": cv_homogeneity_threshold,
+            "movingWindowSize": moving_window_size,  # Adjust based on spatial scale
+            "disaggregatingTemperature": disaggregating_temperature,
             "baggingRegressorOpt": {
-                "n_jobs": 3,  # Number of parallel jobs
-                "n_estimators": 30,  # Number of decision trees in the ensemble
-                "max_samples": 0.8,  # Proportion of samples for each tree
-                "max_features": 0.8,  # Proportion of features for each tree
+                "n_jobs": n_jobs,  # Number of parallel jobs
+                "n_estimators": n_estimators,  # Number of decision trees in the ensemble
+                "max_samples": max_samples,  # Proportion of samples for each tree
+                "max_features": max_features,  # Proportion of features for each tree
             },
         }
 
