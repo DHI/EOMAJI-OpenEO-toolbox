@@ -14,7 +14,7 @@ Following modules are currently included:
 
 ## Workflow Examples
 In the [notebooks](./notebooks) folder you can find examples of how to run the modules on OpenEO Datacubes. All these examples can be run on Copernicus Dataspace the jupyterhub
-* In [notebooks/pydms_example.ipynb](./notebooks/pydms_example.ipynb) you find the example of 
+* In [notebooks/pydms_example.ipynb](./notebooks/pydms_example.ipynb) you find the example of running the Data Mining Sharpener on Sentinel3 LST using Sentinel2  
 
 
 ## Development
