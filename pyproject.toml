@@ -43,7 +43,6 @@ dependencies = [
     "numba==0.57.1",
     "pydms @ git+https://github.com/mariegitter/pyDMS.git",
     "netcdf4>=1.7.2",
-    "gdal==3.8.4",
     "pypro4sail @ git+https://github.com/hectornieto/pypro4sail.git",
     "ipykernel>=6.29.5",
     "rioxarray>=0.18.2",
