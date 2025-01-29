@@ -1,43 +1,80 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["eomaji"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["notebooks", "tests"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build]
+include = [
+    "eomaji/static_data/*.csv",  # Include CSV file in the package
+]
+
 [project]
 name = "eomaji"
 version = "0.1.0"
-description = "A Python package for EOMaji"
+description = "A Python package for EOMAJI"
 authors = [
-    { name = "Marie Lund Larsen", email = "mlla@dhigroup.com" }
+  { name="Marie Lund Larsen", email="mlla@dhigroup.com" },
 ]
 license = {text = "Apache-2.0"}
 readme = "README.md"
+requires-python = ">=3.10,<3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 2 - Pre-Alpha",
     "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
 ]
-
 dependencies = [
-    "numpy>=1.24.4",
+    "numpy==1.24.4",
     "scikit-learn>=1.5.2",
     "pyproj>=3.7.0",
     "scipy>=1.14.1",
     "openeo>=0.33.0",
     "numba==0.57.1",
-    "pydms @ git+https://github.com/mariegitter/pyDMS.git"
+    "pydms @ git+https://github.com/mariegitter/pyDMS.git",
+    "netcdf4>=1.7.2",
+    "gdal==3.8.4",
+    "pypro4sail @ git+https://github.com/hectornieto/pypro4sail.git",
+    "ipykernel>=6.29.5",
+    "rioxarray>=0.18.2",
+    "rasterio>=1.4.3",
+    "cdsapi>=0.7.5",
+    "cfgrib>=0.9.15.0",
+    "pyyaml>=6.0.2",
+    "pytseb @ git+https://github.com/hectornieto/pyTSEB@v.2.2",
+    "scikit-image>=0.25.1",
+    "meteo-utils @ git+https://github.com/mariegitter/meteo_utils",
 ]
 
-[tool.uv]
-name = "eomaji"
-version = "0.1.0"
-description = "A Python package for EOMaji"
-authors = ["Marie Lund Larsen <mlla@dhigroup.com>"]
-readme = "README.md"
-packages = [
-    { include = "eomaji" },
-    { include = "eomaji.workflows" }
+[project.optional-dependencies]
+dev = [
+  "build",
+  "pytest",
+  "ruff",
 ]
 
-[tool.uv.group.dev.dependencies]
-ipykernel = "^6.29.5"
+test= [
+  "pytest",
+]
 
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+notebooks = [
+  "jupyter",
+]
 
+[project.urls]
+"Homepage" = "https://github.com/DHI/EOMAJI-OpenEO-toolbox"
+"Bug Tracker" = "https://github.com/DHI/EOMAJI-OpenEO-toolbox/issues"
+
+[tool.ruff]
+# ignore long lines
+lint.ignore = ["E501"]

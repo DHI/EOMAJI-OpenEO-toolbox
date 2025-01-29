@@ -24,5 +24,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip install uv setuptools wheel
-RUN pip install .
+#RUN  python3 -m pip config set global.break-system-packages true
+#RUN pip install setuptools wheel
+#RUN pip install .

@@ -1,0 +1,16 @@
+landcover_class;min_veg_height;veg_height;lai_max;veg_fractional_cover;veg_height_width_ratio;veg_leaf_width;veg_inclination_distribution;is_herbaceous;igbp_classification;stomatal_resistance;description
+10;10;10;0;0.8;1.5;0.1;1;0;1;200;Tree Cover
+20;2;2;0;1;1;0.05;1;0;6;175;Shrubland
+30;0.1;1;4;1;1;0.02;0.5;1;10;175;Grassland
+40;0.15;1.5;5;1;1;0.02;0.5;1;12;125;Cropland
+41;0.1;0.9;5;1;1;0.02;0.5;1;12;125;Durum Wheat
+42;0.1;1;4;0.75;1;0.05;0.5;1;12;125;Tomatoe
+50;10;10;0;0;0;0;0;0;13;400;Built-up
+60;0.1;0.1;0;0;0;0;0;0;16;100;Bare/Sparse Vegetation
+70;0.1;0.1;0;0;0;0;0;0;15;100;Snow and Ice
+80;0.1;0.1;0;0;0;0;0;0;17;100;Permanent water bodies
+90;0.1;1;4;1;1;0.05;1;1;11;180;Herbaceous wetland
+95;5;5;0;0.7;1;0.1;0.7;0;11;100;Mangroves
+100;0.3;0.3;0;1;1;0.005;1;0;6;180;Moss and lichen
+210;0.3;0.7;4;1;1;0.02;0.8;1;12;125;Peppermint
+0;0.1;0.1;0;0;0;0;0;0;17;100;No data
