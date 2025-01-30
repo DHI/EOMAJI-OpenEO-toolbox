@@ -124,7 +124,7 @@ def split_tifs(nc_file):
             date = date.split("T")[0] if Path(nc_file).stem == "s2_data" else date
 
             if var_name == "viewZenithAngles":
-                output_file = os.path.join(out_dir, f"{date}_VZA.tif")
+                output_file = os.path.join(out_dir, f"{date.split('T')[0]}_VZA.tif")
             elif var_name == "sunZenithAngles":
                 output_file = os.path.join(out_dir, f"{date}_SZA.tif")
             else:
@@ -275,6 +275,10 @@ def get_s2_data(connection, bbox, date, data_dir="./"):
     _ = _estimate_param_value(worldcover_path, lut, "veg_height_width_ratio", out_path)
     out_path = os.path.join(out_dir, f"{datestr}_LEAF_WIDTH.tif")
     _ = _estimate_param_value(worldcover_path, lut, "veg_leaf_width", out_path)
+
+    lai_path = os.path.join(out_dir, f"{date.replace('-', '')}_LAI.tif")
+    cw_path = os.path.join(out_dir, f"{date.replace('-', '')}_CWC.tif")
+    process_lai_and_cwc(lai_path, cw_path)
 
     return (
         (
