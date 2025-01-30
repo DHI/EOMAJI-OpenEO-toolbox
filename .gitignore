@@ -9,6 +9,7 @@ dist/
 build/
 data/
 **.tif**
+**.nc**
 **.adsapirc
 **.cdsapirc
 **__pycache__**

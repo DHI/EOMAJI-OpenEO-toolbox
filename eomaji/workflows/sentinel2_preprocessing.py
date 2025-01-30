@@ -125,7 +125,7 @@ def split_tifs(nc_file):
 
             if var_name == "viewZenithAngles":
                 output_file = os.path.join(out_dir, f"{date}_VZA.tif")
-            if var_name == "sunZenithAngles":
+            elif var_name == "sunZenithAngles":
                 output_file = os.path.join(out_dir, f"{date}_SZA.tif")
             else:
                 output_file = os.path.join(out_dir, f"{date}_{var_name}.tif")
