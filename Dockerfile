@@ -24,6 +24,5 @@ WORKDIR /app
 
 COPY . .
 
-#RUN  python3 -m pip config set global.break-system-packages true
-#RUN pip install setuptools wheel
-#RUN pip install .
+RUN pip install gdal==$(gdal-config --version)
+RUN pip install .

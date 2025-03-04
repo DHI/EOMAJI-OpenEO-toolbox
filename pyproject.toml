@@ -52,7 +52,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "pytseb @ git+https://github.com/hectornieto/pyTSEB@v.2.2",
     "scikit-image>=0.25.1",
-    "meteo-utils @ git+https://github.com/mariegitter/meteo_utils",
+    "meteo-utils @ git+https://github.com/hectornieto/meteo_utils",
 ]
 
 [project.optional-dependencies]
