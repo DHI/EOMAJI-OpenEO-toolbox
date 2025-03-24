@@ -232,7 +232,7 @@ def get_s2_data(connection, bbox, date, data_dir="./"):
         s2_full_cube, method="bilinear"
     )
     wc_resampled_s2_cube = worldcover.resample_cube_spatial(
-        s2_full_cube, method="bilinear"
+        s2_full_cube, method="near"
     )
     lst_resampled_cube = lst_cube.resample_cube_spatial(s2_full_cube, method="bilinear")
     vza_resampled_cube = vza_cube.resample_cube_spatial(s2_full_cube, method="bilinear")
