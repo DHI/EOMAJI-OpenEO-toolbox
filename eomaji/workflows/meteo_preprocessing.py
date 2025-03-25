@@ -7,6 +7,8 @@ import logging
 from typing import List
 import openeo
 
+from meteo_utils import dem_utils as du
+
 from eomaji.utils.process_era5 import process_single_date
 from eomaji.utils.general_utils import load_lut
 
@@ -82,10 +84,8 @@ def get_meteo_data(
     resampled_dem_cube.execute_batch(dem_path)
 
     logging.info("Processing slope and aspect from DEM.")
-    gdal.DEMProcessing(slope_path, dem_path, "slope", computeEdges=True)
-    gdal.DEMProcessing(
-        aspect_path, dem_path, "aspect", computeEdges=True, zeroForFlat=True
-    )
+    du.slope_from_dem(dem_path, slope_path)
+    du.aspect_from_dem(dem_path, aspect_path)
 
     # Extract date and acquisition time
     date_int = int(date.replace("-", ""))
