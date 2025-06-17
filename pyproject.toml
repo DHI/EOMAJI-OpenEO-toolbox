@@ -35,6 +35,8 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "numpy==1.24.4",
+    "numba==0.57.1",
     "pydms @ git+https://github.com/radosuav/pyDMS@v1.2",
     "pypro4sail @ git+https://github.com/hectornieto/pypro4sail@v1.2",
     "pytseb @ git+https://github.com/hectornieto/pyTSEB@v2.3",
@@ -42,7 +44,10 @@ dependencies = [
     "ipykernel",
     "openeo",
     "rioxarray",
-    "pystac_client"
+    "pystac_client",
+    "ipyleaflet==0.19.1",
+    "jupyter-leaflet==0.19.2"
+
 ]
 
 [project.optional-dependencies]
