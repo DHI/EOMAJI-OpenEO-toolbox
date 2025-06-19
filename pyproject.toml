@@ -45,9 +45,13 @@ dependencies = [
     "openeo",
     "rioxarray",
     "pystac_client",
+    "netcdf4",
     "ipyleaflet==0.19.1",
-    "jupyter-leaflet==0.19.2"
-
+    "jupyter-leaflet==0.19.2",
+    "scikit-image",
+    "cdsapi",
+    "cfgrib",
+    "Py6S"
 ]
 
 [project.optional-dependencies]

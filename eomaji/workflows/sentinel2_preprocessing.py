@@ -1,14 +1,13 @@
 import os
 import logging
-from shapely.geometry import box
-from shapely import to_geojson
-import rasterio
-import numpy as np
 from pathlib import Path
+from typing import Union, List, Optional, Tuple
+
+import numpy as np
+import rasterio
 import xarray as xr
 
 from eomaji.utils.general_utils import load_lut
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,12 +18,30 @@ logging.basicConfig(
 lut = load_lut()
 
 
-def get_biopar(connection, product, date, aoi):
+def get_biopar(
+    connection, product: str, date: Union[str, List[str]], aoi: dict
+) -> xr.Dataset:
+    """
+    Retrieve BIOPAR product from an openEO connection.
+
+    Args:
+        connection: openEO connection instance.
+        product (str): Product type name (e.g. 'LAI', 'FAPAR').
+        date (Union[str, List[str]]): Single date or date range [start, end].
+        aoi (dict): GeoJSON-like polygon area of interest.
+
+    Returns:
+        xr.Dataset: BIOPAR dataset.
+    """
     if isinstance(date, str):
         date = [date, date]
+
     biopar = connection.datacube_from_process(
         "BIOPAR",
-        namespace="https://openeo.dataspace.copernicus.eu/openeo/1.1/processes/u:3e24e251-2e9a-438f-90a9-d4500e576574/BIOPAR",
+        namespace=(
+            "https://openeo.dataspace.copernicus.eu/openeo/1.1/processes/"
+            "u:3e24e251-2e9a-438f-90a9-d4500e576574/BIOPAR"
+        ),
         date=date,
         polygon=aoi,
         biopar_type=product,
@@ -32,7 +49,22 @@ def get_biopar(connection, product, date, aoi):
     return biopar
 
 
-def calc_canopy(lai_path, worldcover_path, fg_path):
+def calc_canopy(
+    lai_path: Union[str, Path],
+    worldcover_path: Union[str, Path],
+    fg_path: Union[str, Path],
+) -> None:
+    """
+    Estimate canopy height based on LAI, land cover, and green fraction.
+
+    Args:
+        lai_path (str | Path): Path to LAI GeoTIFF file.
+        worldcover_path (str | Path): Path to land cover GeoTIFF file.
+        fg_path (str | Path): Path to fraction green GeoTIFF file.
+
+    Returns:
+        None. Saves an H_C GeoTIFF to disk.
+    """
     with rasterio.open(lai_path) as lai_src:
         lai = lai_src.read(1).astype(np.float32)
         profile = lai_src.profile
@@ -44,12 +76,13 @@ def calc_canopy(lai_path, worldcover_path, fg_path):
     with rasterio.open(fg_path) as fg_src:
         fg = fg_src.read(1).astype(np.float32)
 
-    param_value = np.ones(landcover.shape, np.float32) + np.nan
+    param_value = np.full_like(landcover, np.nan, dtype=np.float32)
 
     for lc_class in np.unique(landcover[~np.isnan(landcover)]):
         lc_pixels = np.where(landcover == lc_class)
         lc_index = lut[lut["landcover_class"] == lc_class].index[0]
         param_value[lc_pixels] = lut["veg_height"][lc_index]
+
         if lut["is_herbaceous"][lc_index] == 1:
             pai = lai / fg
             pai = pai[lc_pixels]
@@ -57,25 +90,40 @@ def calc_canopy(lai_path, worldcover_path, fg_path):
                 lc_pixels
             ] * np.minimum((pai / lut["veg_height"][lc_index]) ** 3.0, 1.0)
 
-    output_path = lai_path.replace("LAI", "H_C")
+    output_path = str(lai_path).replace("LAI", "H_C")
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(param_value, 1)
-    print(f"Saved H_C to {output_path}")
+
+    logging.info(f"Saved H_C to {output_path}")
 
 
-def calc_fg(fapar_path, lai_path, sza_path):
+def calc_fg(
+    fapar_path: Union[str, Path], lai_path: Union[str, Path], sza_path: Union[str, Path]
+) -> None:
+    """
+    Estimate green fraction (F_G) using FAPAR, LAI, and solar zenith angle.
+
+    Args:
+        fapar_path (Union[str, Path]): Path to FAPAR GeoTIFF.
+        lai_path (Union[str, Path]): Path to LAI GeoTIFF.
+        sza_path (Union[str, Path]): Path to solar zenith angle GeoTIFF.
+
+    Returns:
+        None. Saves F_G as GeoTIFF.
+    """
     from pyTSEB import TSEB
 
     with rasterio.open(fapar_path) as fapar_src:
         fapar = fapar_src.read(1).astype(np.float32)
         profile = fapar_src.profile
+
     with rasterio.open(lai_path) as lai_src:
         lai = lai_src.read(1).astype(np.float32)
 
     with rasterio.open(sza_path) as sza_src:
         sza = sza_src.read(1).astype(np.float32)
 
-    f_g = np.ones(lai.shape, np.float32)
+    f_g = np.ones(lai.shape, dtype=np.float32)
     converged = np.zeros(lai.shape, dtype=bool)
     converged[np.logical_or(lai <= 0.2, fapar <= 0.1)] = True
     min_frac_green = 0.01
@@ -95,10 +143,21 @@ def calc_fg(fapar_path, lai_path, sza_path):
     output_path = str(lai_path).replace("LAI", "F_G")
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(f_g, 1)
-    print(f"Saved frac_green to {output_path}")
+
+    logging.info(f"Saved frac_green to {output_path}")
 
 
-def split_tifs(nc_file):
+def split_tifs(nc_file: Union[str, Path], date_str: str) -> None:
+    """
+    Splits NetCDF bands into separate GeoTIFF files per variable.
+
+    Args:
+        nc_file (Union[str, Path]): Path to input NetCDF.
+        date_str (str): Date string to include in output filenames.
+
+    Returns:
+        None. GeoTIFFs are written to disk.
+    """
     out_dir = Path(nc_file).parent
     data = xr.open_dataset(nc_file)
     s2_bands = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
@@ -106,41 +165,52 @@ def split_tifs(nc_file):
     if Path(nc_file).stem == "s2_data":
         refl = data[s2_bands]
         refl = refl.rio.write_crs(data.crs.crs_wkt)
-        date = str(data.t.values[0]).split("T")[0].replace("-", "")
-        output_file = os.path.join(out_dir, f"{date}_REFL.tif")
-        refl.sel(t=refl.t[0]).rio.to_raster(output_file)
+        output_file = out_dir / f"{date_str}_REFL.tif"
+        refl.rio.to_raster(output_file)
 
     for var_name in data.data_vars:
         if var_name in s2_bands + ["crs"]:
             continue
 
-        for t in data.t:
-            band = data.sel(t=t)[var_name]
-            if "grid_mapping" in band.attrs:
-                del band.attrs["grid_mapping"]
-            band = band.rio.write_crs(data.crs.crs_wkt)
+        band = data[var_name]
+        band.attrs.pop("grid_mapping", None)
+        band = band.rio.write_crs(data.crs.crs_wkt)
 
-            date = str(data.t.values[0]).replace("-", "").replace(":", "").split(".")[0]
-            date = date.split("T")[0] if Path(nc_file).stem == "s2_data" else date
+        if var_name == "viewZenithAngles":
+            output_file = out_dir / f"{date_str}_VZA.tif"
+        elif var_name == "sunZenithAngles":
+            output_file = out_dir / f"{date_str}_SZA.tif"
+        else:
+            output_file = out_dir / f"{date_str}_{var_name}.tif"
 
-            if var_name == "viewZenithAngles":
-                output_file = os.path.join(out_dir, f"{date.split('T')[0]}_VZA.tif")
-            elif var_name == "sunZenithAngles":
-                output_file = os.path.join(out_dir, f"{date}_SZA.tif")
-            else:
-                output_file = os.path.join(out_dir, f"{date}_{var_name}.tif")
-
-            band.rio.to_raster(output_file)
-        print(f"Saved {var_name} to {output_file}")
+        band.rio.to_raster(output_file)
+        logging.info(f"Saved {var_name} to {output_file}")
 
 
-def _estimate_param_value(worldcover_path, lut, band, output_path):
+def _estimate_param_value(
+    worldcover_path: Union[str, Path],
+    lut: xr.Dataset,
+    band: str,
+    output_path: Union[str, Path],
+) -> np.ndarray:
+    """
+    Estimate parameter value (e.g., leaf width) from land cover using a LUT.
+
+    Args:
+        worldcover_path (Union[str, Path]): Path to land cover GeoTIFF.
+        lut (xr.Dataset): Lookup table mapping land cover class to param value.
+        band (str): Parameter name (column in LUT).
+        output_path (Union[str, Path]): Output GeoTIFF path.
+
+    Returns:
+        np.ndarray: Array of estimated values.
+    """
     with rasterio.open(worldcover_path) as worldcover_src:
         landcover = worldcover_src.read(1).astype(np.int32)
         landcover = 10 * (landcover // 10)
         profile = worldcover_src.profile
 
-    param_value = np.ones(landcover.shape) + np.nan
+    param_value = np.full(landcover.shape, np.nan, dtype=np.float32)
 
     for lc_class in np.unique(landcover[~np.isnan(landcover)]):
         lc_pixels = np.where(landcover == lc_class)
@@ -150,146 +220,8 @@ def _estimate_param_value(worldcover_path, lut, band, output_path):
     with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(param_value, 1)
 
-    print(f"Saved {band} to {output_path}")
+    logging.info(f"Saved {band} to {output_path}")
     return param_value
-
-
-def get_s2_data(connection, bbox, date, data_dir="./"):
-    if isinstance(date, str):
-        time_window = [date, date]
-    if isinstance(date, list):
-        time_window = date
-
-    base_output_dir = os.path.join(data_dir, "s2_data")
-    date_dir = "/".join(date.split("-"))
-    out_dir = os.path.join(base_output_dir, date_dir)
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir, exist_ok=True)
-
-    bbox_polygon = eval(to_geojson(box(*bbox)))
-    aoi = dict(zip(["west", "south", "east", "north"], bbox))
-
-    fapar = get_biopar(connection, "FAPAR", time_window, bbox_polygon)
-    lai = get_biopar(connection, "LAI", time_window, bbox_polygon)
-    fcover = get_biopar(connection, "FCOVER", time_window, bbox_polygon)
-    ccc = get_biopar(connection, "CCC", time_window, bbox_polygon)
-    cwc = get_biopar(connection, "CWC", time_window, bbox_polygon)
-
-    s2_collection = "SENTINEL2_L2A"
-    s2_bands = [
-        "B02",
-        "B03",
-        "B04",
-        "B05",
-        "B06",
-        "B07",
-        "B08",
-        "B8A",
-        "B11",
-        "B12",
-        "SCL",
-        "sunZenithAngles",
-    ]
-
-    s2_cube = connection.load_collection(
-        s2_collection, spatial_extent=aoi, temporal_extent=time_window, bands=s2_bands
-    )
-
-    lst_cube = connection.load_collection(
-        "SENTINEL3_SLSTR_L2_LST",
-        spatial_extent=aoi,
-        temporal_extent=time_window,
-        bands=["LST"],
-        properties={
-            "timeliness": lambda x: x == "NT",
-            "orbitDirection": lambda x: x == "DESCENDING",
-        },
-    )
-
-    vza_cube = connection.load_collection(
-        "SENTINEL3_SLSTR_L2_LST",
-        spatial_extent=aoi,
-        temporal_extent=time_window,
-        bands=["viewZenithAngles"],
-        properties={
-            "timeliness": lambda x: x == "NT",
-            "orbitDirection": lambda x: x == "DESCENDING",
-        },
-    )
-
-    dem_cube = connection.load_collection("COPERNICUS_30", spatial_extent=aoi)
-
-    worldcover = connection.load_collection(
-        "ESA_WORLDCOVER_10M_2021_V2", temporal_extent=["2021-01-01", "2021-12-31"]
-    ).filter_bbox(bbox)
-
-    biopar_cube = fapar.merge_cubes(lai)
-    biopar_cube = biopar_cube.merge_cubes(fcover)
-    biopar_cube = biopar_cube.merge_cubes(ccc)
-    biopar_cube = biopar_cube.merge_cubes(cwc)
-    s2_full_cube = biopar_cube.merge_cubes(s2_cube)
-    dem_resampled_s2_cube = dem_cube.resample_cube_spatial(
-        s2_full_cube, method="bilinear"
-    )
-    wc_resampled_s2_cube = worldcover.resample_cube_spatial(
-        s2_full_cube, method="near"
-    )
-    lst_resampled_cube = lst_cube.resample_cube_spatial(s2_full_cube, method="bilinear")
-    vza_resampled_cube = vza_cube.resample_cube_spatial(s2_full_cube, method="bilinear")
-
-    s2_path = os.path.join(out_dir, "s2_data.nc")
-    lst_path = os.path.join(out_dir, "lst_data.nc")
-    vza_path = os.path.join(out_dir, "vza_data.nc")
-
-    if not os.path.exists(s2_path):
-        s2_full_cube.execute_batch(s2_path)
-    split_tifs(s2_path)
-
-    datestr = date.replace("-", "")
-    dem_path = os.path.join(out_dir, f"{datestr}_ELEV.tif")
-    if not os.path.exists(dem_path):
-        dem_resampled_s2_cube.execute_batch(dem_path)
-
-    worldcover_path = os.path.join(out_dir, f"WordlCover2021.tif")
-    if not os.path.exists(worldcover_path):
-        wc_resampled_s2_cube.execute_batch(worldcover_path)
-
-    if not os.path.exists(lst_path):
-        lst_resampled_cube.execute_batch(lst_path)
-
-    if not os.path.exists(vza_path):
-        vza_resampled_cube.execute_batch(vza_path)
-
-    split_tifs(lst_path)
-    split_tifs(vza_path)
-
-    lai_path = os.path.join(out_dir, f"{datestr}_LAI.tif")
-    fapar_path = os.path.join(out_dir, f"{datestr}_FAPAR.tif")
-    sza_path = os.path.join(out_dir, f"{datestr}_SZA.tif")
-    fg_path = os.path.join(out_dir, f"{datestr}_F_G.tif")
-
-    calc_fg(fapar_path, lai_path, sza_path)
-    calc_canopy(lai_path, worldcover_path, fg_path)
-
-    out_path = os.path.join(out_dir, f"{datestr}_W_C.tif")
-    _ = _estimate_param_value(worldcover_path, lut, "veg_height_width_ratio", out_path)
-    out_path = os.path.join(out_dir, f"{datestr}_LEAF_WIDTH.tif")
-    _ = _estimate_param_value(worldcover_path, lut, "veg_leaf_width", out_path)
-
-    lai_path = os.path.join(out_dir, f"{date.replace('-', '')}_LAI.tif")
-    cw_path = os.path.join(out_dir, f"{date.replace('-', '')}_CWC.tif")
-    process_lai_and_cwc(lai_path, cw_path)
-
-    return (
-        (
-            s2_full_cube,
-            dem_resampled_s2_cube,
-            wc_resampled_s2_cube,
-            lst_resampled_cube,
-            vza_resampled_cube,
-        ),
-        out_dir,
-    )
 
 
 def watercloud_model(param, a, b, c):
@@ -340,8 +272,8 @@ def process_lai_to_vis(lai_path):
             cab = np.clip(np.array(lai), 0.0, 140.0)
             refl_vis, trans_vis = cab_to_vis_spectrum(cab)  # Function assumed to exist
 
-            rho_vis_path = lai_path.replace("LAI", "RHO_VIS_C")
-            tau_vis_path = lai_path.replace("LAI", "TAU_VIS_C")
+            rho_vis_path = str(lai_path).replace("LAI", "RHO_VIS_C")
+            tau_vis_path = str(lai_path).replace("LAI", "TAU_VIS_C")
 
             save_raster(rho_vis_path, refl_vis, meta)
             save_raster(tau_vis_path, trans_vis, meta)
@@ -367,8 +299,8 @@ def process_cwc_to_nir(cw_path):
             cw = np.clip(np.array(cw), 0.0, 0.1)
             refl_nir, trans_nir = cw_to_nir_spectrum(cw)  # Function assumed to exist
 
-            rho_nir_path = cw_path.replace("CWC", "RHO_NIR_C")
-            tau_nir_path = cw_path.replace("CWC", "TAU_NIR_C")
+            rho_nir_path = str(cw_path).replace("CWC", "RHO_NIR_C")
+            tau_nir_path = str(cw_path).replace("CWC", "TAU_NIR_C")
 
             save_raster(rho_nir_path, refl_nir, meta)
             save_raster(tau_nir_path, trans_nir, meta)
@@ -406,3 +338,34 @@ def save_lat_lon_as_tifs(nc_file, out_dir, date):
 
     lon = lon.rio.write_crs(data.crs.crs_wkt)
     lon.rio.to_raster(f"{out_dir}/{date}_LON.tif")
+
+
+def split_datasets_to_tiffs(
+    s2_path, s3_path, worldcover_path, date, out_dir: str | Path = None
+):
+    if out_dir:
+        base_dir = Path(out_dir)
+    else:
+        base_dir = Path(s2_path).parent
+    datestr = str(date).replace("-", "")
+
+    split_tifs(s2_path, datestr)
+    split_tifs(s3_path, datestr)
+
+    lai_path = base_dir / f"{datestr}_LAI.tif"
+    fapar_path = base_dir / f"{datestr}_FAPAR.tif"
+    sza_path = base_dir / f"{datestr}_SZA.tif"
+    fg_path = base_dir / f"{datestr}_F_G.tif"
+
+    calc_fg(fapar_path, lai_path, sza_path)
+    calc_canopy(lai_path, worldcover_path, fg_path)
+
+    out_path = base_dir / f"{datestr}_W_C.tif"
+    _ = _estimate_param_value(worldcover_path, lut, "veg_height_width_ratio", out_path)
+    out_path = base_dir / f"{datestr}_LEAF_WIDTH.tif"
+    _ = _estimate_param_value(worldcover_path, lut, "veg_leaf_width", out_path)
+
+    cw_path = base_dir / f"{datestr}_CWC.tif"
+    process_lai_and_cwc(lai_path, cw_path)
+
+    return base_dir

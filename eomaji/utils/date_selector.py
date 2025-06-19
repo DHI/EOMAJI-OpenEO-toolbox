@@ -32,7 +32,7 @@ def get_available_stac_dates(
         max_items=1000,
     )
 
-    items = list(search.get_items())
+    items = list(search.items())
     dates = sorted(
         {datetime.fromisoformat(item.datetime.isoformat()).date() for item in items}
     )
@@ -48,21 +48,17 @@ def get_available_dates(
     Returns a dropdown widget with the allowed dates.
     """
 
-    sentinel_2_collection_id = "sentinel-2-l2a"
     sentinel_3_collection_id = "sentinel-3-sl-2-lst-ntc"
     stac_url = "https://stac.dataspace.copernicus.eu/v1"
-    sentinel_2_dates = get_available_stac_dates(
+    sentinel_3_dates = get_available_stac_dates(
         stac_url,
-        sentinel_2_collection_id,
+        sentinel_3_collection_id,
         bbox,
         start_date,
         end_date,
         extra_query={"eo:cloud_cover": {"lt": max_cloud_cover}},
     )
-    sentinel_3_dates = get_available_stac_dates(
-        stac_url, sentinel_3_collection_id, bbox, start_date, end_date
-    )
-    valid_dates = set(sentinel_2_dates) & set(sentinel_3_dates)
+    valid_dates = sorted([valid_date for valid_date in set(sentinel_3_dates)])
 
     dropdown = widgets.Dropdown(
         options=[

@@ -1,8 +1,10 @@
 import os
+from typing import List
 import logging
 import tempfile
-import openeo
 import xarray as xr
+import rasterio
+import rioxarray
 from pyDMS.pyDMS import DecisionTreeSharpener
 from eomaji.utils.raster_utils import gdal_to_xarray
 
@@ -10,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def run_decision_tree_sharpener(
-    high_resolution_cube: openeo.DataCube,
-    low_resolution_cube: openeo.DataCube,
-    low_resolution_mask: openeo.DataCube = None,
+    high_res_dataarray: xr.DataArray,
+    low_res_dataarray: xr.DataArray,
+    low_res_mask: xr.DataArray = None,
     mask_values: int = [],
     cv_homogeneity_threshold: int = 0,
     moving_window_size: int = 30,
@@ -28,9 +30,9 @@ def run_decision_tree_sharpener(
     DecisionTreeSharpener algorithm.
 
     Args:
-        high_resolution_cube (openeo.DataCube): High-resolution input data.
-        low_resolution_cube (openeo.DataCube): Low-resolution input data.
-        low_resolution_mask (openeo.DataCube, optional): Mask for low-resolution data.
+        high_res_dataset (xr.Dataset): High-resolution input data.
+        low_res_cube (xr.Dataset): Low-resolution input data.
+        low_res_mask_band (xr.DataArray, optional): Mask band for low-resolution data.
         mask_values (list, optional): Values to mask in the low-resolution data.
         cv_homogeneity_threshold (int, optional): Homogeneity threshold for cross-validation.
         moving_window_size (int, optional): Size of the moving window for analysis.
@@ -44,26 +46,27 @@ def run_decision_tree_sharpener(
     Returns:
         xarray.DataArray or str: If `output_path` is provided, returns the file path. Otherwise, returns an xarray.DataArray.
     """
+
     try:
         # Create temporary files for inputs
         with tempfile.NamedTemporaryFile(delete=False, suffix=".tiff") as high_res_temp:
             high_res_file = high_res_temp.name
-            high_resolution_cube.download(high_res_file)
+            high_res_dataarray.rio.to_raster(high_res_file)
             logger.info(f"Downloaded high-resolution file to {high_res_file}")
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".tiff") as low_res_temp:
             low_res_file = low_res_temp.name
-            low_resolution_cube.download(low_res_file)
+            low_res_dataarray.rio.to_raster(low_res_file)
             logger.info(f"Downloaded low-resolution file to {low_res_file}")
 
         # Handle optional mask
         low_res_mask_files = []
-        if low_resolution_mask:
+        if low_res_mask is not None:
             with tempfile.NamedTemporaryFile(
                 delete=False, suffix=".tiff"
             ) as low_res_mask_temp:
                 low_res_mask_file = low_res_mask_temp.name
-                low_resolution_mask.download(low_res_mask_file)
+                low_res_mask.rio.to_raster(low_res_mask_file)
                 logger.info(f"Downloaded low-resolution mask to {low_res_mask_file}")
                 low_res_mask_files = [low_res_mask_file]
 
