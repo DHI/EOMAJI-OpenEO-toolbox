@@ -1,19 +1,29 @@
-# EOMAJI OpenEO Toolbox
-This repository contains openEO workflows for various python modules used in Evapotranspiration (ET) modeling and Irrigation mapping. 
+![Project Status](https://img.shields.io/badge/Status-Development-yellow)
+[![GitHub last commit](https://img.shields.io/github/last-commit/DHI/EOMAJI-OpenEO-toolbox)](#)
 
+# EOMAJI OpenEO Toolbox
+> ⚠️ **Note:** This project is under active development. Features may change and bugs may exist.
+
+This repository contains openEO workflows for various python modules used in Evapotranspiration (ET) modeling and Irrigation mapping. 
 Following modules are currently included:
 * [Data Mining Sharpener (pyDMS)](https://github.com/radosuav/pyDMS)
 * [Two Source Energy Balance (TSEB)](https://github.com/hectornieto/pyTSEB)
 
+
 ## Installation
-* first install GDAL on your machine
-* Then install the package from Github
+To install the EOMAJI OpenEO Toolbox locally, follow these steps:
+
+1. Install GDAL
+Make sure GDAL is installed on your system. This is a required dependency for geospatial data processing.
+
+2. Install the Toolbox from GitHub
+Once GDAL is installed, you can install the toolbox directly using pip:
     ```
     pip install eomaji@git+https://github.com/DHI/EOMAJI-OpenEO-toolbox.git
     ```
+>💡**Note**: If you're using the notebooks on Copernicus Data Space (CDSE) JupyterHub, the package is installed in the first cell. You *should* be able run the notebooks out of the box without any additional setup if you choose the "Geo Science Kernel"
 
 ## Running the Evapotranspiration Workflow  
-
 The **notebooks** provided in the [`notebooks/`](./notebooks) folder demonstrate how to use the **EOMAJI OpenEO toolbox** for evapotranspiration modeling.  
 
 These notebooks can be run directly on **Copernicus Data Space (CDSE) JupyterHub** for efficient processing and scalability.  
@@ -34,14 +44,15 @@ These notebooks can be run directly on **Copernicus Data Space (CDSE) JupyterHub
 These notebooks form a complete workflow, from data retrieval and preprocessing to sharpening LST and running the ET model.
 
 ## Development
-For development, you can set up the environment in one of two ways:
+You are welcome to contribute to the project my making either a Pull Request or a Ticket.
 
+For setting up a development environment, you have two options:
 1. **Using a Dev Container**
     This repository includes a devcontainer setup, which provides a pre-configured environment for development.
 
 2. **Manual Setup** If you prefer a local setup
-    * Install GDAL
-    * Create a virtual environment and install the package:
+    * Make sure GDAL is installed on your system.
+    * Create a virtual environment and install the package with either pip or UV:
     ```sh
         python -m venv eomaji-env
         source eomaji-env/bin/activate # On Windows, use `eomaji-env\Scripts\activate`
