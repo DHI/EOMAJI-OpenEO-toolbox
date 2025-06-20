@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
@@ -24,5 +24,5 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip install gdal==$(gdal-config --version)
-RUN pip install .
+RUN pip install gdal==$(gdal-config --version) --break-system-packages
+RUN pip install . --break-system-packages
