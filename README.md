@@ -11,6 +11,26 @@ Following modules are currently included:
 
 
 ## Installation
+### Installation on Copernicus Data Space (CDSE) JupyterHub
+1. Go to [https://jupyterhub.dataspace.copernicus.eu](https://jupyterhub.dataspace.copernicus.eu) and start a server
+2. In the server either upload the notebooks manually or clone this repo by opening a terminal and running
+    ```
+    git clone https://github.com/DHI/EOMAJI-OpenEO-toolbox.git
+    ```
+3. Create a new clean kernel using the following commands in a terminal on Jupyterhub
+    ```
+    conda create -n gdal_env python=3.11 \
+    conda activate gdal_env \
+    conda install -c conda-forge gdal \
+    pip install ipykernel \
+    pip install eomaji@git+https://github.com/DHI/EOMAJI-OpenEO-toolbox.git \
+    python -m ipykernel install --user --name=gdal_env --display-name "EOMAJI Kernel" 
+    ```
+4. You can now select the "EOMAJI Kernel" kernel to run the notebooks
+
+  >💡**Note**: The package is installed in the first cell of the notebooks. You *should* be able run the notebooks out of the box without any additional setup if using a kernel with GDAL installed, but sometimes there can be conflics with existing packages in the environment. It is recommended to to a clean kernel installation
+
+### Local Installation
 To install the EOMAJI OpenEO Toolbox locally, follow these steps:
 
 1. Install GDAL
@@ -21,7 +41,6 @@ Once GDAL is installed, you can install the toolbox directly using pip:
     ```
     pip install eomaji@git+https://github.com/DHI/EOMAJI-OpenEO-toolbox.git
     ```
->💡**Note**: If you're using the notebooks on Copernicus Data Space (CDSE) JupyterHub, the package is installed in the first cell. You *should* be able run the notebooks out of the box without any additional setup if you choose the "Geo Science Kernel"
 
 ## Running the Evapotranspiration Workflow  
 The **notebooks** provided in the [`notebooks/`](./notebooks) folder demonstrate how to use the **EOMAJI OpenEO toolbox** for evapotranspiration modeling.  
