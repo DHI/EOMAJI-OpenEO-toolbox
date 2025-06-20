@@ -164,7 +164,9 @@ def prepare_data_cubes(
         s3_cube.execute_batch(s3_path)
 
     dem_cube = connection.load_collection("COPERNICUS_30", spatial_extent=aoi)
-    dem_resampled_s2_cube = dem_cube.resample_cube_spatial(s2_cube, method="bilinear")
+    dem_resampled_s2_cube = dem_cube.resample_cube_spatial(
+        s2_best_pixel, method="bilinear"
+    )
     dem_resampled_s3_cube = dem_cube.resample_cube_spatial(s3_cube, method="bilinear")
     if not os.path.exists(dem_s2_path):
         dem_resampled_s2_cube.execute_batch(dem_s2_path)
