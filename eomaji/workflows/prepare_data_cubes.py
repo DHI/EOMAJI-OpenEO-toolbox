@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 
 
-def wait_and_download(job, path, max_wait=1000, poll_interval=10):
+def wait_and_download(job, path, max_wait=6000, poll_interval=10):
     """
     Wait for an OpenEO job to finish and download the result.
     Retries if result is not immediately ready after finishing.
