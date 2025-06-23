@@ -39,67 +39,46 @@ def get_available_stac_dates(
         List of unique `datetime.date` objects.
     """
     logger = logging.getLogger(__name__)
-    try:
-        # Optional pre-check for non-JSON response
-        test_response = requests.get(stac_url)
-        test_response.raise_for_status()
-        content_type = test_response.headers.get("Content-Type", "")
-        if "application/json" not in content_type:
-            raise ValueError("Unexpected response format (not JSON).")
+    # Optional pre-check for non-JSON response
+    test_response = requests.get(stac_url)
+    test_response.raise_for_status()
+    content_type = test_response.headers.get("Content-Type", "")
+    if "application/json" not in content_type:
+        raise ValueError("Unexpected response format (not JSON).")
 
-        # Open STAC client and search
-        catalog = Client.open(stac_url)
+    # Open STAC client and search
+    catalog = Client.open(stac_url)
 
-        if extra_query:
-            search = catalog.search(
-                collections=[collection_id],
-                bbox=bbox,
-                datetime=f"{start_date}/{end_date}",
-                query=extra_query,
-                max_items=100,
-            )
-        elif filter:
-            search = catalog.search(
-                collections=[collection_id],
-                bbox=bbox,
-                datetime=f"{start_date}/{end_date}",
-                filter=filter,
-                max_items=100,
-            )
-        else:
-            search = catalog.search(
-                collections=[collection_id],
-                bbox=bbox,
-                datetime=f"{start_date}/{end_date}",
-                max_items=100,
-            )
-
-        items = list(search.items())
-        dates = sorted(
-            {datetime.fromisoformat(item.datetime.isoformat()).date() for item in items}
+    if extra_query:
+        search = catalog.search(
+            collections=[collection_id],
+            bbox=bbox,
+            datetime=f"{start_date}/{end_date}",
+            query=extra_query,
+            max_items=100,
+        )
+    elif filter:
+        search = catalog.search(
+            collections=[collection_id],
+            bbox=bbox,
+            datetime=f"{start_date}/{end_date}",
+            filter=filter,
+            max_items=100,
+        )
+    else:
+        search = catalog.search(
+            collections=[collection_id],
+            bbox=bbox,
+            datetime=f"{start_date}/{end_date}",
+            max_items=100,
         )
 
-        return dates
+    items = list(search.items())
+    dates = sorted(
+        {datetime.fromisoformat(item.datetime.isoformat()).date() for item in items}
+    )
 
-    except ValueError as ve:
-        logger.error("❌ STAC server response was not valid JSON.")
-        logger.info(f"Details: {ve}")
-
-    except requests.exceptions.HTTPError as he:
-        logger.error("❌ HTTP error occurred while accessing the STAC API.")
-        logger.info(f"Details: {he}")
-
-    except requests.exceptions.RequestException as re:
-        logger.error("❌ Network-related error when trying to connect to the STAC API.")
-        logger.info(f"Details: {re}")
-
-    except Exception as ex:
-        logger.error(
-            "❌ An unexpected error occurred while accessing or parsing STAC data."
-        )
-        logger.info(f"Details: {ex}")
-
-    return []  # Return empty list on failure
+    return dates
 
 
 def get_available_dates(
@@ -122,7 +101,7 @@ def get_available_dates(
             end_date,
             extra_query={"eo:cloud_cover": {"lt": max_cloud_cover}},
         )
-    except json.decoder.JSONDecodeError as e:
+    except:
         sentinel_3_dates = get_available_stac_dates(
             "https://catalogue.dataspace.copernicus.eu/stac",
             "SENTINEL-3",
