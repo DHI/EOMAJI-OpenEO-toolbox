@@ -1,8 +1,18 @@
+import requests
+import json
 from typing import List
 from datetime import datetime
 import ipywidgets as widgets
 from IPython.display import display
 from pystac_client import Client
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()],
+)
 
 
 def get_available_stac_dates(
@@ -22,22 +32,58 @@ def get_available_stac_dates(
     Returns:
         List of unique `datetime.date` objects.
     """
-    catalog = Client.open(stac_url)
+    logger = logging.getLogger(__name__)
+    try:
+        # Optional pre-check for non-JSON response
+        test_response = requests.get(stac_url)
+        test_response.raise_for_status()
+        content_type = test_response.headers.get("Content-Type", "")
+        if "application/json" not in content_type:
+            raise ValueError("Unexpected response format (not JSON).")
 
-    search = catalog.search(
-        collections=[collection_id],
-        bbox=bbox,
-        datetime=f"{start_date}/{end_date}",
-        query=extra_query,
-        max_items=1000,
-    )
+        # Open STAC client and search
+        catalog = Client.open(stac_url)
 
-    items = list(search.items())
-    dates = sorted(
-        {datetime.fromisoformat(item.datetime.isoformat()).date() for item in items}
-    )
+        search = catalog.search(
+            collections=[collection_id],
+            bbox=bbox,
+            datetime=f"{start_date}/{end_date}",
+            query=extra_query,
+            max_items=1000,
+        )
 
-    return dates
+        items = list(search.items())
+        dates = sorted(
+            {datetime.fromisoformat(item.datetime.isoformat()).date() for item in items}
+        )
+
+        return dates
+
+    except json.decoder.JSONDecodeError as e:
+        logger.error(
+            "❌ Failed to decode JSON. STAC server may have returned an HTML error page."
+        )
+        logger.warning("You might be behind a proxy or firewall.")
+
+    except ValueError as ve:
+        logger.error("❌ STAC server response was not valid JSON.")
+        logger.info(f"Details: {ve}")
+
+    except requests.exceptions.HTTPError as he:
+        logger.error("❌ HTTP error occurred while accessing the STAC API.")
+        logger.info(f"Details: {he}")
+
+    except requests.exceptions.RequestException as re:
+        logger.error("❌ Network-related error when trying to connect to the STAC API.")
+        logger.info(f"Details: {re}")
+
+    except Exception as ex:
+        logger.error(
+            "❌ An unexpected error occurred while accessing or parsing STAC data."
+        )
+        logger.info(f"Details: {ex}")
+
+    return []  # Return empty list on failure
 
 
 def get_available_dates(

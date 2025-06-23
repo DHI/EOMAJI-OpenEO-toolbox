@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import datetime
+import time
 import os
 from pathlib import Path
 import openeo
@@ -15,6 +16,43 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler()],
 )
+
+
+def wait_and_download(job, path, max_wait=1000, poll_interval=10):
+    """
+    Wait for an OpenEO job to finish and download the result.
+    Retries if result is not immediately ready after finishing.
+    """
+    start_time = time.time()
+
+    while True:
+        status = job.status()
+        logging.info(f"Job {job.job_id} status: {status}")
+        if status in ["running", "queued", "created"]:
+            if time.time() - start_time > max_wait:
+                logging.warning(f"Timeout waiting for job {job.job_id}")
+                return
+            time.sleep(poll_interval)
+        elif status == "finished":
+            # Try downloading with retry in case results aren't ready yet
+            for retry in range(5):
+                try:
+                    job.get_results().download_file(path)
+                    logging.info(f"Downloaded result for job {job.job_id} to {path}")
+                    return
+                except openeo.rest.job.JobFailedException as e:
+                    logging.error(f"Job {job.job_id} failed: {e}")
+                    return
+                except Exception as e:
+                    logging.warning(f"Result not ready yet for job {job.job_id}: {e}")
+                    time.sleep(5)
+            logging.error(
+                f"Failed to download results for job {job.job_id} after retries."
+            )
+            return
+        else:
+            logging.error(f"Job {job.job_id} failed or unknown status: {status}")
+            return
 
 
 def prepare_data_cubes(
@@ -66,20 +104,11 @@ def prepare_data_cubes(
     os.makedirs(base_dir, exist_ok=True)
 
     # Define output file paths
-    s2_path = os.path.join(base_dir, "s2_data.nc")
-    s3_path = os.path.join(base_dir, "s3_data.nc")
+    s2_path = Path(base_dir) / "s2_data.nc"
+    s3_path = Path(base_dir) / "s3_data.nc"
     dem_s2_path = Path(base_dir) / f"{date_str}_ELEV.tif"
     dem_s3_path = Path(base_dir) / "meteo_dem.tif"
     worldcover_path = Path(base_dir) / "WordlCover2021.tif"
-
-    # if (
-    #    os.path.exists(s2_path)
-    #    and os.path.exists(s3_path)
-    #    and os.path.exists(dem_s2_path)
-    #    and os.path.exists(worldcover_path)
-    # ):
-    #   logging.info("Cached data cubes found. Skipping download.")
-    #    return s2_path, s3_path
 
     # Prepare AOI and date range
     aoi = dict(zip(["west", "south", "east", "north"], bbox))
@@ -89,6 +118,8 @@ def prepare_data_cubes(
         str(date + relativedelta(days=+sentinel2_search_range)),
     ]
 
+    # for jobs
+    jobs = []
     # Define bands
     s2_bands = [
         "B02",
@@ -126,6 +157,10 @@ def prepare_data_cubes(
     s2_cube = connection.load_collection(
         "SENTINEL2_L2A", spatial_extent=aoi, temporal_extent=time_window, bands=s2_bands
     )
+    s2_reference_cube = connection.load_collection(
+        "SENTINEL2_L2A", spatial_extent=aoi, temporal_extent=time_window, bands=["B02"]
+    ).reduce_dimension(dimension="t", reducer="first")
+
     merged = (
         fapar.merge_cubes(lai)
         .merge_cubes(fcover)
@@ -142,7 +177,9 @@ def prepare_data_cubes(
     s2_best_pixel = masked.reduce_dimension(dimension="t", reducer="first")
 
     if not os.path.exists(s2_path):
-        s2_best_pixel.execute_batch(s2_path)
+        s2_job = s2_best_pixel.create_job(out_format="netcdf")
+        s2_job.start()
+        jobs.append((s2_job, s2_path))
     else:
         logging.info("Cached Sentinel 2 data cube found. Skipping download.")
 
@@ -157,36 +194,82 @@ def prepare_data_cubes(
             "orbitDirection": lambda x: x == "DESCENDING",
         },
     )
-    acq_time = float(
+    sentinel3_acq_time = float(
         s3_cube.metadata.temporal_dimension.extent[0].split("T")[1].split(":")[0]
     )
     if not os.path.exists(s3_path):
-        s3_cube.execute_batch(s3_path)
+        s3_job = s3_cube.create_job(out_format="netcdf")
+        s3_job.start()
+        jobs.append((s3_job, s3_path))
 
-    dem_cube = connection.load_collection("COPERNICUS_30", spatial_extent=aoi)
+    # === Extract and save viewZenithAngles (VZA) separately ===
+    vza_path = Path(base_dir) / f"{date_str}_VZA.tif"
+
+    if not os.path.exists(vza_path):
+        vza_cube = s3_cube.band("viewZenithAngles").reduce_dimension(
+            dimension="t", reducer="first"
+        )
+        vza_resampled = vza_cube.resample_cube_spatial(
+            s2_reference_cube, method="bilinear"
+        )
+        vza_job = vza_resampled.create_job(out_format="GTiff")
+        vza_job.start()
+        jobs.append((vza_job, vza_path))
+    else:
+        logging.info("Cached VZA cube found. Skipping download.")
+
+    dem_cube = connection.load_collection(
+        "COPERNICUS_30", spatial_extent=aoi
+    ).reduce_dimension(dimension="t", reducer="first")
+
     dem_resampled_s2_cube = dem_cube.resample_cube_spatial(
-        s2_best_pixel, method="bilinear"
+        s2_reference_cube, method="bilinear"
     )
-    dem_resampled_s3_cube = dem_cube.resample_cube_spatial(s3_cube, method="bilinear")
+    dem_resampled_s3_cube = dem_cube.resample_cube_spatial(
+        s3_cube.reduce_dimension(dimension="t", reducer="first"), method="bilinear"
+    )
     if not os.path.exists(dem_s2_path):
-        dem_resampled_s2_cube.execute_batch(dem_s2_path)
+        dem_s2_job = dem_resampled_s2_cube.create_job(out_format="GTiff")
+        dem_s2_job.start()
+        jobs.append((dem_s2_job, dem_s2_path))
     else:
         logging.info("Cached DEM data cube found. Skipping download.")
     if not os.path.exists(dem_s3_path):
-        dem_resampled_s3_cube.execute_batch(dem_s3_path)
+        dem_s3_job = dem_resampled_s3_cube.create_job(out_format="GTiff")
+        dem_s3_job.start()
+        jobs.append((dem_s3_job, dem_s3_path))
     else:
         logging.info("Cached DEM cube found. Skipping download.")
 
-    worldcover = connection.load_collection(
-        "ESA_WORLDCOVER_10M_2021_V2", temporal_extent=["2021-01-01", "2021-12-31"]
-    ).filter_bbox(bbox)
-    wc_resampled_s2_cube = worldcover.resample_cube_spatial(s2_cube, method="near")
+    worldcover = (
+        connection.load_collection(
+            "ESA_WORLDCOVER_10M_2021_V2", temporal_extent=["2021-01-01", "2021-12-31"]
+        )
+        .filter_bbox(bbox)
+        .reduce_dimension(dimension="t", reducer="first")
+    )
+    wc_resampled_s2_cube = worldcover.resample_cube_spatial(
+        s2_reference_cube, method="near"
+    )
     if not os.path.exists(worldcover_path):
-        wc_resampled_s2_cube.execute_batch(worldcover_path)
+        wc_job = wc_resampled_s2_cube.create_job(out_format="GTiff")
+        wc_job.start()
+        jobs.append((wc_job, worldcover_path))
     else:
         logging.info("Cached Worldcover cube found. Skipping download.")
 
-    # lst_resampled_cube = lst_cube.resample_cube_spatial(s2_full_cube, method="bilinear")
+    # Call for all jobs
+    for job, path in jobs:
+        wait_and_download(job, path)
+
     logging.info("Data cubes prepared and saved.")
 
-    return s2_path, s3_path, worldcover_path, dem_s2_path, dem_s3_path, acq_time
+    return (
+        s2_path,
+        s3_path,
+        vza_path,
+        worldcover_path,
+        dem_s2_path,
+        dem_s3_path,
+        sentinel3_acq_time,
+    )
