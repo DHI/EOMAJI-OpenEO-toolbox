@@ -16,7 +16,13 @@ logging.basicConfig(
 
 
 def get_available_stac_dates(
-    stac_url, collection_id, bbox, start_date, end_date, extra_query=None
+    stac_url,
+    collection_id,
+    bbox,
+    start_date,
+    end_date,
+    extra_query=None,
+    filter=None,
 ):
     """
     Query a STAC endpoint using pystac-client and return a list of available acquisition dates.
@@ -44,13 +50,29 @@ def get_available_stac_dates(
         # Open STAC client and search
         catalog = Client.open(stac_url)
 
-        search = catalog.search(
-            collections=[collection_id],
-            bbox=bbox,
-            datetime=f"{start_date}/{end_date}",
-            query=extra_query,
-            max_items=1000,
-        )
+        if extra_query:
+            search = catalog.search(
+                collections=[collection_id],
+                bbox=bbox,
+                datetime=f"{start_date}/{end_date}",
+                query=extra_query,
+                max_items=100,
+            )
+        elif filter:
+            search = catalog.search(
+                collections=[collection_id],
+                bbox=bbox,
+                datetime=f"{start_date}/{end_date}",
+                filter=filter,
+                max_items=100,
+            )
+        else:
+            search = catalog.search(
+                collections=[collection_id],
+                bbox=bbox,
+                datetime=f"{start_date}/{end_date}",
+                max_items=100,
+            )
 
         items = list(search.items())
         dates = sorted(
@@ -58,12 +80,6 @@ def get_available_stac_dates(
         )
 
         return dates
-
-    except json.decoder.JSONDecodeError as e:
-        logger.error(
-            "❌ Failed to decode JSON. STAC server may have returned an HTML error page."
-        )
-        logger.warning("You might be behind a proxy or firewall.")
 
     except ValueError as ve:
         logger.error("❌ STAC server response was not valid JSON.")
@@ -96,14 +112,26 @@ def get_available_dates(
 
     sentinel_3_collection_id = "sentinel-3-sl-2-lst-ntc"
     stac_url = "https://stac.dataspace.copernicus.eu/v1"
-    sentinel_3_dates = get_available_stac_dates(
-        stac_url,
-        sentinel_3_collection_id,
-        bbox,
-        start_date,
-        end_date,
-        extra_query={"eo:cloud_cover": {"lt": max_cloud_cover}},
-    )
+
+    try:
+        sentinel_3_dates = get_available_stac_dates(
+            stac_url,
+            sentinel_3_collection_id,
+            bbox,
+            start_date,
+            end_date,
+            extra_query={"eo:cloud_cover": {"lt": max_cloud_cover}},
+        )
+    except json.decoder.JSONDecodeError as e:
+        sentinel_3_dates = get_available_stac_dates(
+            "https://catalogue.dataspace.copernicus.eu/stac",
+            "SENTINEL-3",
+            bbox,
+            start_date,
+            end_date,
+            filter={"op": "<=", "args": [{"property": "cloudCover"}, max_cloud_cover]},
+        )
+
     valid_dates = sorted([valid_date for valid_date in set(sentinel_3_dates)])
 
     dropdown = widgets.Dropdown(

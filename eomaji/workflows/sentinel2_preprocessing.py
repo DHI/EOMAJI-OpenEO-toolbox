@@ -176,9 +176,7 @@ def split_tifs(nc_file: Union[str, Path], date_str: str) -> None:
         band.attrs.pop("grid_mapping", None)
         band = band.rio.write_crs(data.crs.crs_wkt)
 
-        if var_name == "viewZenithAngles":
-            output_file = out_dir / f"{date_str}_VZA.tif"
-        elif var_name == "sunZenithAngles":
+        if var_name == "sunZenithAngles":
             output_file = out_dir / f"{date_str}_SZA.tif"
         else:
             output_file = out_dir / f"{date_str}_{var_name}.tif"
